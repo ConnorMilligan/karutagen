@@ -18,9 +18,8 @@ def main():
     )
     parser.add_argument("image_dir", type=Path, help="Directory containing PNG images")
     parser.add_argument("output", type=Path, help="Output .tex file")
-    parser.add_argument("--cols", type=int, default=5, help="Cards per row (default: 6)")
-    parser.add_argument("--rows", type=int, default=4, help="Rows per page (default: 5)")
-    parser.add_argument("--vspace", default="5mm", help="Vertical space between rows")
+    parser.add_argument("--cols", type=int, default=5, help="Cards per row (default: 5)")
+    parser.add_argument("--rows", type=int, default=4, help="Rows per page (default: 4)")
 
     args = parser.parse_args()
 
@@ -47,7 +46,8 @@ def main():
                 else:
                     label = latex_escape(img.stem)
                     row.append(f"\\card{{{img.as_posix()}}}{{{label}}}")
-            lines.append(" & ".join(row) + rf" \\[{args.vspace}]")
+            # unified vertical spacing
+            lines.append(" & ".join(row) + r" \\[\cardgap]")
 
         if page != pages - 1:
             lines += [
@@ -59,48 +59,67 @@ def main():
             ]
 
     with open(args.output, "w", encoding="utf-8") as f:
-        f.write(r"""\documentclass[a4paper]{article}
-\usepackage[a4paper,landscape,margin=18mm]{geometry}
-\usepackage{graphicx}
-\usepackage{array}
-\usepackage{calc}
+        f.write(rf"""\documentclass[a4paper]{{article}}
+\usepackage[a4paper,landscape,margin=18mm]{{geometry}}
+\usepackage{{graphicx}}
+\usepackage{{array}}
+\usepackage{{calc}}
 
-\pagenumbering{gobble}
-\setlength{\parindent}{0pt}
-\setlength{\tabcolsep}{3pt}
-\setlength{\fboxsep}{6pt}
-\setlength{\fboxrule}{0.5pt}
+\pagenumbering{{gobble}}
+\setlength{{\parindent}}{{0pt}}
 
-\newlength{\cardwidth}
-\setlength{\cardwidth}{(\textwidth - 12\tabcolsep) / 6}
-\newlength{\innercardwidth}
-\setlength{\innercardwidth}{%
-  \cardwidth - 2\fboxsep - 2\fboxrule
-}
+% ---- Unified spacing control ----
+\newlength{{\cardgap}}
+\setlength{{\cardgap}}{{6pt}} % <<< adjust this ONE value
 
-\newcommand{\card}[2]{%
-  \fbox{%
-    \begin{minipage}[t][0.18\textheight][c]{\innercardwidth}
+\setlength{{\tabcolsep}}{{\cardgap}}
+\setlength{{\fboxsep}}{{6pt}}
+\setlength{{\fboxrule}}{{0.5pt}}
+
+\newcommand{{\cardcols}}{{{args.cols}}}
+\newcommand{{\cardrows}}{{{args.rows}}}
+
+% ---- Card size calculations ----
+\newlength{{\cardwidth}}
+\setlength{{\cardwidth}}{{(\textwidth - 2\tabcolsep*\cardcols) / \cardcols}}
+
+\newlength{{\cardheight}}
+\setlength{{\cardheight}}{{(\textheight - 2\tabcolsep*\cardrows) / \cardrows}}
+
+\newlength{{\innercardwidth}}
+\setlength{{\innercardwidth}}{{\cardwidth - 2\fboxsep - 2\fboxrule}}
+
+\newlength{{\innercardheight}}
+\setlength{{\innercardheight}}{{\cardheight - 2\fboxsep - 2\fboxrule}}
+
+% ---- Scalable label ----
+\newcommand{{\cardlabel}}[1]{{%
+  \fontsize{{0.11\innercardheight}}{{1.2em}}\selectfont #1
+}}
+
+\newcommand{{\card}}[2]{{
+  \fbox{{
+    \begin{{minipage}}[t][\innercardheight][c]{{\innercardwidth}}
       \centering
       \includegraphics[
         width=\linewidth,
-        height=0.12\textheight,
+        height=0.7\innercardheight,
         keepaspectratio
-      ]{#1}\\[2mm]
-      \textbf{#2}
-    \end{minipage}
-  }%
-}
+      ]{{#1}}\\[2mm]
+      \cardlabel{{\textbf{{#2}}}}
+    \end{{minipage}}
+  }}
+}}
 
-\newcommand{\emptycard}{%
-  \fbox{%
-    \begin{minipage}[t][0.18\textheight][c]{\innercardwidth}
-    \end{minipage}
-  }%
-}
+\newcommand{{\emptycard}}{{
+  \fbox{{
+    \begin{{minipage}}[t][\innercardheight][c]{{\innercardwidth}}
+    \end{{minipage}}
+  }}
+}}
 
-\begin{document}
-\begin{center}
+\begin{{document}}
+\begin{{center}}
 """)
 
         f.write(
