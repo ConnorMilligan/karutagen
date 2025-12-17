@@ -1,5 +1,5 @@
-cards.aux
-cards.log
-cards.tex
-cards.pdf
+*.aux
+*.log
+*.tex
+*.pdf
 images
